@@ -1,10 +1,12 @@
-package math2D;
+package math;
 
+public class Util {
 
-public class Matrix {
+    // Error to use.
+    static final double EPS = 1e-6;
 
     // NOTE, below, and everywhere in this package,
-    // We shall assume all Matrices/Vectors are non-null and non-empty.
+    // We shall assume all Matrices/Items are non-null and non-empty.
     // Additionally, for Matrices, we will assume they are rectangular.
     // i.e. every inner array must have the same length.
     // If these assumptions are not true for given inputs, behavior is undefined.
@@ -46,23 +48,5 @@ public class Matrix {
         }
 
         return newMat;
-    }
-
-    private double[][] mat;
-
-    Matrix(double[][] mat) {
-        if (mat.length != 3 || mat[0].length != 3) {
-            throw new IllegalArgumentException("Given matrix is not 3 x 3.");
-        }
-
-        this.mat = mat;
-    }
-
-    double[][] mat() {
-        return mat;
-    }
-
-    public Matrix compose(Matrix o) {
-        return new Matrix(mult(mat, o.mat()));
     }
 }
