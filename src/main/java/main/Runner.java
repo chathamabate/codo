@@ -1,5 +1,6 @@
 package main;
 
+import math.Matrix;
 import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
@@ -12,6 +13,9 @@ import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.system.MemoryStack.*;
 import static org.lwjgl.system.MemoryUtil.*;
+
+import static math.Item.*;
+import static math.Matrix.*;
 
 public class Runner {
     // The window handle
@@ -47,7 +51,7 @@ public class Runner {
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
 
         // Create the window
-        window = glfwCreateWindow(300, 300, "Graphics", NULL, NULL);
+        window = glfwCreateWindow(600, 600, "Graphics", NULL, NULL);
         if ( window == NULL )
             throw new RuntimeException("Failed to create the GLFW window");
 
@@ -94,21 +98,55 @@ public class Runner {
         GL.createCapabilities();
 
         // Set the clear color
-        glClearColor(1.0f, 0.0f, 0.0f, 0.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
         while (!glfwWindowShouldClose(window)) {
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
-
-            // Drawing in here???
-
-            glfwSwapBuffers(window); // swap the color buffers
-
             // Poll for window events. The key callback above will only be
             // invoked during this call.
             glfwPollEvents();
+
+            // Update.
+            update();
+
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
+
+            render();
+
+            glfwSwapBuffers(window); // swap the color buffers
+
+            try {
+                // Best Case Scenario 20 FPS
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                System.out.println("Interrupt Exception!");
+            }
+
         }
+    }
+
+    private Matrix sprite;
+
+    public Runner() {
+        sprite = sprite2D(
+                -.5, 0,
+                .5, 0,
+                0, .5
+        );
+    }
+
+    private void update() {
+        sprite = sprite.times(scale2D(0, 1, 1, 1, 1.01));
+    }
+
+    private void render() {
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+
+        // Basic Triangle
+        glBegin(GL_TRIANGLES);
+        sprite.draw2D();
+        glEnd();
     }
 
     public static void main(String[] args) {

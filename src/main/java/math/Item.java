@@ -39,6 +39,14 @@ public class Item {
         return vals;
     }
 
+    public boolean is2DPoint() {
+        return vals.length == 3 && vals[2] != 0;
+    }
+
+    public boolean is2DVector() {
+        return vals.length == 3 && vals[2] == 0;
+    }
+
     // NOTE, for speed, this function assumes we are working with a 2D Point.
     public void draw2D() {
         glVertex2d(vals[0], vals[1]);
@@ -46,10 +54,6 @@ public class Item {
 
     public double val(int i) {
         return vals[i];
-    }
-
-    public boolean isPoint() {
-        return vals[vals.length - 1] != 0;
     }
 
     public Item times(Matrix m) {
@@ -122,12 +126,20 @@ public class Item {
             return false;
         }
 
-        for (int j = 0; j < vals.length; j++) {
+        int j;
+        for (j = 0; j < vals.length - 1; j++) {
             if (Math.abs(vals[j] - oVals[j]) > EPS) {
                 return false;
             }
         }
 
-        return true;
+        // NOTE...
+        // The last coordinate of an Item determines whether it is a Point or Vector.
+        // 0.0 represents a vector... everything else... a point.
+        // This is what this fancy logic checks.
+        // A Point and Vector can never be equal.
+        return !((vals[j] != oVals[j] && (vals[j] == 0.0 || oVals[j] == 0.0)) ||
+                Math.abs(vals[j] - oVals[j]) > EPS);
+
     }
 }
