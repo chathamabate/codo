@@ -118,7 +118,7 @@ public class Runner {
 
             try {
                 // Best Case Scenario 20 FPS
-                Thread.sleep(50);
+                Thread.sleep(500);
             } catch (InterruptedException e) {
                 System.out.println("Interrupt Exception!");
             }
@@ -128,16 +128,28 @@ public class Runner {
 
     private Matrix sprite;
 
+    private final Matrix trans1;
+    private final Matrix trans2;
+    private final Matrix trans3;
+
     public Runner() {
         sprite = sprite2D(
-                -.5, 0,
-                .5, 0,
-                0, .5
+                0, 0,
+                1.0, 0,
+                0, 1.0
         );
+
+        trans1 = i(3).affineTrans2D(.5, 0, 0, .5, 0, 0);
+        trans2 = i(3).affineTrans2D( .5, 0, 0, .5, .5, 0);
+        trans3 = i(3).affineTrans2D(0, .5, -.5, 0, 1.0, .5);
     }
 
+    private int level = 0;
+
     private void update() {
-        sprite = sprite.times(scale2D(0, 1, 1, 1, 1.01));
+        if (level++ < 7) {
+            sprite = sprite.times(trans1).concat(sprite.times(trans2)).concat(sprite.times(trans3));
+        }
     }
 
     private void render() {

@@ -25,7 +25,7 @@ public class Item {
         return new Item(x, y, w);
     }
 
-    private double[] vals;
+    private final double[] vals;
 
     Item(double... vals) {
         if (vals == null || vals.length == 0) {
@@ -82,6 +82,22 @@ public class Item {
         for (int j = 0; j < vals.length; j++) {
             newVals[j] = vals[j] + oVals[j];
         }
+
+        return new Item(newVals);
+    }
+
+    public Item minus(Item i) {
+        return this.plus(i.times(-1));
+    }
+
+    // Simply set the last coord to 0.
+    public Item asVector() {
+        double[] newVals = new double[vals.length];
+        for (int i = 0; i < vals.length - 1; i++) {
+            newVals[i] = vals[i];
+        }
+
+        newVals[vals.length - 1] = 0;
 
         return new Item(newVals);
     }
