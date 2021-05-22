@@ -1,12 +1,16 @@
 package main;
 
+import math.Item;
 import math.Matrix;
 import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
 import org.lwjgl.system.*;
 
+import java.lang.reflect.Array;
 import java.nio.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
@@ -51,7 +55,7 @@ public class Runner {
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE); // the window will be resizable
 
         // Create the window
-        window = glfwCreateWindow(600, 600, "Graphics", NULL, NULL);
+        window = glfwCreateWindow(900, 900, "Graphics", NULL, NULL);
         if ( window == NULL )
             throw new RuntimeException("Failed to create the GLFW window");
 
@@ -98,7 +102,7 @@ public class Runner {
         GL.createCapabilities();
 
         // Set the clear color
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
@@ -108,7 +112,7 @@ public class Runner {
             glfwPollEvents();
 
             // Update.
-            update();
+//            update();
 
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
@@ -128,38 +132,112 @@ public class Runner {
 
     private Matrix sprite;
 
-    private final Matrix trans1;
-    private final Matrix trans2;
-    private final Matrix trans3;
+    private List<Matrix> sprites;
+
+    private List<Matrix> sprites1;
+
+    private List<Matrix> wTrans;
+
+    private List<Matrix> wwTrans;
 
     public Runner() {
         sprite = sprite2D(
                 0, 0,
-                1.0, 0,
-                0, 1.0
+                1.0, 0
         );
 
-        trans1 = i(3).affineTrans2D(.5, 0, 0, .5, 0, 0);
-        trans2 = i(3).affineTrans2D( .5, 0, 0, .5, .5, 0);
-        trans3 = i(3).affineTrans2D(0, .5, -.5, 0, 1.0, .5);
-    }
+        Item p0 = point2D(0, 0);
+        Item p1 = point2D(1.0 / 3.0, 0);
+        Item p2 = point2D(1.0 / 2.0, Math.sqrt(3.0) / 6.0);
+        Item p3 = point2D(2.0 / 3.0, 0);
+        Item p4 = point2D(1.0, 0);
 
-    private int level = 0;
+        wTrans = new ArrayList<>();
+        wTrans.add(i(3).affineTrans2D(p0, p4, p2, p2, p0, p1));
+        wTrans.add(i(3).affineTrans2D(p0, p4, p2, p4, p2, p3));
 
-    private void update() {
-        if (level++ < 7) {
-            sprite = sprite.times(trans1).concat(sprite.times(trans2)).concat(sprite.times(trans3));
+        wwTrans = new ArrayList<>();
+        for (Matrix wi : wTrans) {
+            for (Matrix wj : wTrans) {
+                wwTrans.add(wi.times(wj));
+            }
+        }
+
+        sprite = iterate(sprite, wwTrans, 8);
+
+        sprites = new ArrayList<>();
+
+        for (Matrix wwTran : wwTrans) {
+            sprites.add(sprite.times(wwTran));
+        }
+
+        sprites1 = new ArrayList<>();
+        for (Matrix wTran : wTrans) {
+            sprites1.add(sprite.times(wTran));
         }
     }
 
-    private void render() {
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    private static Matrix iterate(Matrix s0, List<Matrix> ifs, int reps) {
+        Matrix s = s0;
 
-        // Basic Triangle
-        glBegin(GL_TRIANGLES);
-        sprite.draw2D();
+        for (int i = 0; i < reps; i++) {
+            Matrix next = s.times(ifs.get(0));
+            for (int j = 1; j < ifs.size(); j++) {
+                next = next.concat(s.times(ifs.get(j)));
+            }
+
+            s = next;
+        }
+
+        return s;
+    }
+
+    private static Matrix combineSprites(List<Matrix> sprites) {
+        double width = 1.0 / sprites.size();
+
+        Matrix S = i(3).scale2D(width - .1).shift2D(.05, 0);
+
+        Matrix combine = sprites.get(0).times(S);
+
+        for (int i = 1; i < sprites.size(); i++) {
+            S = S.shift2D(width, 0);
+
+            combine = combine.concat(sprites.get(i).times(S));
+        }
+
+        return combine;
+    }
+
+
+    private void render() {
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        glLineWidth(2);
+
+        glColor3d(0.0, 0.0, 0.0);
+        glBegin(GL_LINES);
+
+        double[][] colors = new double[][] {
+          new double[] {1.0, 0.0, 0.0},
+          new double[] {0.0, 0.0, 0.0},
+          new double[] {0.0, 0.0, 1.0},
+          new double[] {0.0, 0.5, 0.0}
+        };
+
+        for (int i = 0; i < sprites.size(); i++) {
+            glColor3dv(colors[i]);
+            sprites.get(i).scale2D(.8).shift2D(-.85, 0).draw2D();
+        }
+
+        for (int i = 0; i < sprites1.size(); i++) {
+            glColor3dv(colors[i]);
+            sprites1.get(i).flip2D(1.0, 0).shift2D(0, Math.tan(Math.PI / 6.0) / 2.0).scale2D(.8).shift2D(.05, 0).draw2D();
+        }
+
+//        sprite.shift2D(-.5, 0).draw2D();
         glEnd();
     }
+
 
     public static void main(String[] args) {
         (new Runner()).run();

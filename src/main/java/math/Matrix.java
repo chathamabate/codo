@@ -1,6 +1,7 @@
 package math;
 
 import static math.Util.*;
+import static math.Item.*;
 
 import static org.lwjgl.opengl.GL11.*;
 
@@ -72,6 +73,15 @@ public class Matrix {
 
     double[][] mat() {
         return mat;
+    }
+
+    public double[] flat() {
+        double[] glMat = new double[mat.length * mat[0].length];
+        for (int i = 0; i < mat.length; i++) {
+            System.arraycopy(mat[i], 0, glMat, (i * mat[0].length), mat[0].length);
+        }
+
+        return glMat;
     }
 
     // NOTE, for speed there is no 2D check.
@@ -226,7 +236,6 @@ public class Matrix {
         return this.shift2D(vals[0], vals[1]);
     }
 
-
     public Matrix shift2D(double x, double y) {
         // NOTE, this shift ignores weight!
         double[][] mat = identityArray(3);
@@ -316,13 +325,13 @@ public class Matrix {
             throw new IllegalArgumentException("AffineTrans2D requires 6 points!");
         }
 
-        Item qv1 = q3.minus(q1).asVector();
-        Item qv2 = q2.minus(q1).asVector();
+        Item qv1 = q2.minus(q1).asVector();
+        Item qv2 = q3.minus(q1).asVector();
 
         Matrix back = affineTrans2D(q1, qv1, qv2).inverse();
 
-        Item pv1 = p3.minus(p1).asVector();
-        Item pv2 = p2.minus(p1).asVector();
+        Item pv1 = p2.minus(p1).asVector();
+        Item pv2 = p3.minus(p1).asVector();
 
         Matrix forward = affineTrans2D(p1, pv1, pv2);
 
@@ -338,7 +347,7 @@ public class Matrix {
         double[] v1vals = v1.vals();
         double[] v2vals = v2.vals();
 
-        return this.affineTrans2D(pvals[0], pvals[1], v1vals[0], v1vals[1], v2vals[0], v2vals[1]);
+        return this.affineTrans2D(v1vals[0], v1vals[1], v2vals[0], v2vals[1], pvals[0], pvals[1]);
     }
 
     public Matrix affineTrans2D(double a, double b, double c, double d, double e, double f) {
@@ -354,5 +363,36 @@ public class Matrix {
         mat[2][1] = f;
 
         return this.times(new Matrix(mat));
+    }
+
+    public Matrix flip2D(Item v) {
+        if (!v.is2DVector()) {
+            throw new IllegalArgumentException("Can only flip2D over 2D vector!");
+        }
+
+        Item i = vector2D(1, 0);
+        Item j = vector2D(0, 1);
+
+        Item vp = v.normalize();
+
+        Item ip = i.minus((i.minus(vp.times(i.dot(vp)))).times(2.0));
+        double[] ivals = ip.vals();
+
+        Item jp = j.minus((j.minus(vp.times(j.dot(vp)))).times(2.0));
+        double[] jvals = jp.vals();
+
+        double[][] newMat = identityArray(3);
+
+        newMat[0][0] = ivals[0];
+        newMat[0][1] = ivals[1];
+
+        newMat[1][0] = jvals[0];
+        newMat[1][1] = jvals[1];
+
+        return this.times(new Matrix(newMat));
+    }
+
+    public Matrix flip2D(double x, double y) {
+        return this.flip2D(vector2D(x, y));
     }
 }
