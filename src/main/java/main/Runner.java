@@ -2,6 +2,7 @@ package main;
 
 import math.Item;
 import math.Matrix;
+import math.Turtle;
 import org.lwjgl.*;
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.*;
@@ -132,13 +133,14 @@ public class Runner {
 
     private Matrix sprite;
 
-    private List<Matrix> sprites;
-
-    private List<Matrix> sprites1;
+    private Matrix row0;
+    private Matrix row1;
 
     private List<Matrix> wTrans;
 
     private List<Matrix> wwTrans;
+
+    private Turtle t;
 
     public Runner() {
         sprite = sprite2D(
@@ -153,8 +155,12 @@ public class Runner {
         Item p4 = point2D(1.0, 0);
 
         wTrans = new ArrayList<>();
-        wTrans.add(i(3).affineTrans2D(p0, p4, p2, p2, p0, p1));
-        wTrans.add(i(3).affineTrans2D(p0, p4, p2, p4, p2, p3));
+        wTrans.add(i(3).scale2D(0,0, Math.sqrt(3.0) / 3.0)
+                .flip2D(0, 0, 1, 0).rotate2D(Math.PI / 6.0));
+        wTrans.add(i(3).scale2D(1.0, 0, Math.sqrt(3.0) / 3.0)
+                .flip2D(0, 0, 1, 0).rotate2D(1.0, 0, - Math.PI / 6.0));
+//        wTrans.add(i(3).affineTrans2D(p0, p4, p2, p2, p0, p1));
+//        wTrans.add(i(3).affineTrans2D(p0, p4, p2, p4, p2, p3));
 
         wwTrans = new ArrayList<>();
         for (Matrix wi : wTrans) {
@@ -163,18 +169,25 @@ public class Runner {
             }
         }
 
-        sprite = iterate(sprite, wwTrans, 8);
+        List<Matrix> row0s = new ArrayList<>();
+        row0s.add(sprite);
+        row0s.add(iterate(sprite, wTrans, 1));
+        row0s.add(iterate(sprite, wTrans, 2));
+        row0s.add(iterate(sprite, wTrans, 5));
+        row0s.add(iterate(sprite, wTrans, 10));
 
-        sprites = new ArrayList<>();
+        row0 = combineSprites(row0s);
 
-        for (Matrix wwTran : wwTrans) {
-            sprites.add(sprite.times(wwTran));
-        }
+        List<Matrix> row1s = new ArrayList<>();
+        row1s.add(sprite);
+        row1s.add(iterate(sprite, wwTrans, 1));
+        row1s.add(iterate(sprite, wwTrans, 2));
+        row1s.add(iterate(sprite, wwTrans, 5));
+        row1s.add(iterate(sprite, wwTrans, 10));
 
-        sprites1 = new ArrayList<>();
-        for (Matrix wTran : wTrans) {
-            sprites1.add(sprite.times(wTran));
-        }
+        row1 = combineSprites(row1s);
+
+        t = kcn(Turtle.t(), 10);
     }
 
     private static Matrix iterate(Matrix s0, List<Matrix> ifs, int reps) {
@@ -208,6 +221,34 @@ public class Runner {
         return combine;
     }
 
+    private static Turtle kco(Turtle turtle, int level) {
+        if (level == 0) {
+            return turtle.forward(1);
+        }
+
+        Turtle nt = turtle.scale(1.0 / 3.0);
+        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
+        nt = kco(nt, level - 1).rotate(- 2 * Math.PI / 3.0);
+        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
+        return kco(nt, level - 1).scale(3.0);
+    }
+
+    private static Turtle kcn(Turtle turtle, int level) {
+        if (level == 0) {
+            return turtle.forward(1);
+        }
+
+        Turtle nt = turtle.move(1.0)
+                .rotate(5.0 * Math.PI / 6.0)
+                .scale(1.0 / Math.sqrt(3.0));
+
+        nt = kcn(nt, level - 1).rotate(Math.PI / 3.0);
+        return kcn(nt, level - 1)
+                .rotate(5 * Math.PI / 6.0)
+                .scale(Math.sqrt(3.0))
+                .move(1.0);
+    }
+
 
     private void render() {
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -216,23 +257,17 @@ public class Runner {
 
         glColor3d(0.0, 0.0, 0.0);
         glBegin(GL_LINES);
+        t.draw2D();
 
-        double[][] colors = new double[][] {
-          new double[] {1.0, 0.0, 0.0},
-          new double[] {0.0, 0.0, 0.0},
-          new double[] {0.0, 0.0, 1.0},
-          new double[] {0.0, 0.5, 0.0}
-        };
-
-        for (int i = 0; i < sprites.size(); i++) {
-            glColor3dv(colors[i]);
-            sprites.get(i).scale2D(.8).shift2D(-.85, 0).draw2D();
-        }
-
-        for (int i = 0; i < sprites1.size(); i++) {
-            glColor3dv(colors[i]);
-            sprites1.get(i).flip2D(1.0, 0).shift2D(0, Math.tan(Math.PI / 6.0) / 2.0).scale2D(.8).shift2D(.05, 0).draw2D();
-        }
+//        double[][] colors = new double[][] {
+//          new double[] {1.0, 0.0, 0.0},
+//          new double[] {0.0, 0.0, 0.0},
+//          new double[] {0.0, 0.0, 1.0},
+//          new double[] {0.0, 0.5, 0.0}
+//        };
+//
+//        row0.scale2D(2.0).shift2D(-1.0, 0).draw2D();
+//        row1.scale2D(2.0).shift2D(-1.0, -.2).draw2D();
 
 //        sprite.shift2D(-.5, 0).draw2D();
         glEnd();

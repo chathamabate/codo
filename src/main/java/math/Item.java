@@ -39,6 +39,10 @@ public class Item {
         return vals;
     }
 
+    public Matrix asMatrix() {
+        return new Matrix(new double[][] {vals});
+    }
+
     public boolean is2DPoint() {
         return vals.length == 3 && vals[2] != 0;
     }

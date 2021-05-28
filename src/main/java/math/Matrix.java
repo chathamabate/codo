@@ -179,6 +179,24 @@ public class Matrix {
         return new Matrix(newMat);
     }
 
+    public Matrix concat(Item i) {
+        double[] vals = i.vals();
+
+        if (vals.length != mat[0].length) {
+            throw new IllegalArgumentException("Dimension mismatch for concat!");
+        }
+
+        double[][] newMat = new double[mat.length + 1][mat[0].length];
+
+        for (int r = 0; r < newMat.length - 1; r++) {
+            System.arraycopy(mat[r], 0, newMat[r], 0, newMat[0].length);
+        }
+
+        System.arraycopy(vals, 0, newMat[newMat.length - 1], 0, newMat[0].length);
+
+        return new Matrix(newMat);
+    }
+
     public boolean equals(Object o) {
         if (!(o instanceof Matrix)) {
             return false;
@@ -365,34 +383,37 @@ public class Matrix {
         return this.times(new Matrix(mat));
     }
 
-    public Matrix flip2D(Item v) {
-        if (!v.is2DVector()) {
-            throw new IllegalArgumentException("Can only flip2D over 2D vector!");
+    public Matrix flip2D(Item p, Item v) {
+        if (!p.is2DPoint() || ! v.is2DVector()) {
+            throw new IllegalArgumentException("Can only flip2D over 2D line!");
         }
 
         Item i = vector2D(1, 0);
         Item j = vector2D(0, 1);
+        Item o = point2D(0, 0);
 
-        Item vp = v.normalize();
+        Item vn = v.normalize();    // normalize direction vector.
 
-        Item ip = i.minus((i.minus(vp.times(i.dot(vp)))).times(2.0));
-        double[] ivals = ip.vals();
+        Item ip = i.minus(i.minus(vn.times(vn.dot(i))).times(2.0));
+        Item jp = j.minus(j.minus(vn.times(vn.dot(j))).times(2.0));
 
-        Item jp = j.minus((j.minus(vp.times(j.dot(vp)))).times(2.0));
-        double[] jvals = jp.vals();
+        Item opv = o.minus(p);  // PO vector.
+        Item op = p.plus(opv.minus(opv.minus(vn.times(vn.dot(opv))).times(2.0)));  // P + PO'
 
-        double[][] newMat = identityArray(3);
+        double[][] matv = identityArray(3);
 
-        newMat[0][0] = ivals[0];
-        newMat[0][1] = ivals[1];
+        double[][] copyVals = new double[][] {
+            ip.vals(), jp.vals(), op.vals()
+        };
 
-        newMat[1][0] = jvals[0];
-        newMat[1][1] = jvals[1];
+        for (int r = 0; r < 3; r++) {
+            System.arraycopy(copyVals[r], 0, matv[r], 0, 2);
+        }
 
-        return this.times(new Matrix(newMat));
+        return this.times(new Matrix(matv));
     }
 
-    public Matrix flip2D(double x, double y) {
-        return this.flip2D(vector2D(x, y));
+    public Matrix flip2D(double px, double py, double vx, double vy) {
+        return flip2D(point2D(px, py), vector2D(vx, vy));
     }
 }
