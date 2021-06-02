@@ -13,6 +13,8 @@ import static org.lwjgl.opengl.GL11.*;
  * vA represents the product.
  */
 public class Item {
+    public static Item vector2Dp(double x, double y) { return new Item(x, y); }
+
     public static Item vector2D(double x, double y) {
         return new Item(x, y, 0);
     }

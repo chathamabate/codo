@@ -1,5 +1,6 @@
 package main;
 
+import math.IFS;
 import math.Item;
 import math.Matrix;
 import math.Turtle;
@@ -12,6 +13,8 @@ import java.lang.reflect.Array;
 import java.nio.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.UnaryOperator;
 
 import static org.lwjgl.glfw.Callbacks.*;
 import static org.lwjgl.glfw.GLFW.*;
@@ -21,6 +24,7 @@ import static org.lwjgl.system.MemoryUtil.*;
 
 import static math.Item.*;
 import static math.Matrix.*;
+import static math.IFS.*;
 
 public class Runner {
     // The window handle
@@ -57,14 +61,12 @@ public class Runner {
 
         // Create the window
         window = glfwCreateWindow(900, 900, "Graphics", NULL, NULL);
+
         if ( window == NULL )
             throw new RuntimeException("Failed to create the GLFW window");
 
         // Setup a key callback. It will be called every time a key is pressed, repeated or released.
-        glfwSetKeyCallback(window, (window, key, scancode, action, mods) -> {
-            if ( key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE )
-                glfwSetWindowShouldClose(window, true); // We will detect this in the rendering loop
-        });
+        glfwSetKeyCallback(window, this::keyboardHandler);
 
         // Get the thread stack and push a new frame
         try ( MemoryStack stack = stackPush() ) {
@@ -94,6 +96,42 @@ public class Runner {
         glfwShowWindow(window);
     }
 
+    private void keyboardHandler(long wind, int key, int scancode, int action, int mods) {
+        if (action == GLFW_RELEASE) {
+            redraw = true;
+
+            switch (key) {
+                case '1':
+                    stepSize *= .75;
+                    break;
+                case '2':
+                    stepSize *= 1.25;
+                    break;
+                case 'W':
+                    y += 50 * stepSize;
+                    break;
+                case 'A':
+                    x -= 50 * stepSize;
+                    break;
+                case 'S':
+                    y -= 50 * stepSize;
+                    break;
+                case 'D':
+                    x += 50 * stepSize;
+                    break;
+                case 'Z':
+                    iterations = (int) (iterations * 1.25);
+                    break;
+                case 'X':
+                    iterations = (int) (iterations * .75);
+                    break;
+                default:
+                    redraw = false;
+                    break;
+            }
+        }
+    }
+
     private void loop() {
         // This line is critical for LWJGL's interoperation with GLFW's
         // OpenGL context, or any context that is managed externally.
@@ -101,6 +139,8 @@ public class Runner {
         // creates the GLCapabilities instance and makes the OpenGL
         // bindings available for use.
         GL.createCapabilities();
+
+        glMatrixMode(GL_MODELVIEW);
 
         // Set the clear color
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -112,18 +152,14 @@ public class Runner {
             // invoked during this call.
             glfwPollEvents();
 
-            // Update.
-//            update();
-
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
-
-            render();
-
-            glfwSwapBuffers(window); // swap the color buffers
+            if (redraw) {
+                render();
+                redraw = false;
+            }
 
             try {
                 // Best Case Scenario 20 FPS
-                Thread.sleep(500);
+                Thread.sleep(50);
             } catch (InterruptedException e) {
                 System.out.println("Interrupt Exception!");
             }
@@ -131,146 +167,150 @@ public class Runner {
         }
     }
 
-    private Matrix sprite;
+    private double x;
+    private double y;
+    private double stepSize;
+    private int iterations;
 
-    private Matrix row0;
-    private Matrix row1;
+    private boolean redraw;
 
-    private List<Matrix> wTrans;
+    private Item op(Item i) {
+        double x = i.val(0);
+        double y = i.val(1);
 
-    private List<Matrix> wwTrans;
-
-    private Turtle t;
+        return mandlebrotColor(vector2Dp(x, y), iterations);
+    }
 
     public Runner() {
-        sprite = sprite2D(
-                0, 0,
-                1.0, 0
-        );
+        x = 0;
+        y = 0;
+        stepSize = .01;
+        iterations = 100;
 
-        Item p0 = point2D(0, 0);
-        Item p1 = point2D(1.0 / 3.0, 0);
-        Item p2 = point2D(1.0 / 2.0, Math.sqrt(3.0) / 6.0);
-        Item p3 = point2D(2.0 / 3.0, 0);
-        Item p4 = point2D(1.0, 0);
+        redraw = true;
+    }
 
-        wTrans = new ArrayList<>();
-        wTrans.add(i(3).scale2D(0,0, Math.sqrt(3.0) / 3.0)
-                .flip2D(0, 0, 1, 0).rotate2D(Math.PI / 6.0));
-        wTrans.add(i(3).scale2D(1.0, 0, Math.sqrt(3.0) / 3.0)
-                .flip2D(0, 0, 1, 0).rotate2D(1.0, 0, - Math.PI / 6.0));
-//        wTrans.add(i(3).affineTrans2D(p0, p4, p2, p2, p0, p1));
-//        wTrans.add(i(3).affineTrans2D(p0, p4, p2, p4, p2, p3));
 
-        wwTrans = new ArrayList<>();
-        for (Matrix wi : wTrans) {
-            for (Matrix wj : wTrans) {
-                wwTrans.add(wi.times(wj));
+//    private static Matrix combineSprites(List<Matrix> sprites) {
+//        double width = 1.0 / sprites.size();
+//
+//        Matrix S = i(3).scale2D(width - .1).shift2D(.05, 0);
+//
+//        Matrix combine = sprites.get(0).times(S);
+//
+//        for (int i = 1; i < sprites.size(); i++) {
+//            S = S.shift2D(width, 0);
+//
+//            combine = combine.concat(sprites.get(i).times(S));
+//        }
+//
+//        return combine;
+//    }
+//
+//    private static Turtle kco(Turtle turtle, int level) {
+//        if (level == 0) {
+//            return turtle.forward(1);
+//        }
+//
+//        Turtle nt = turtle.scale(1.0 / 3.0);
+//        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
+//        nt = kco(nt, level - 1).rotate(- 2 * Math.PI / 3.0);
+//        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
+//        return kco(nt, level - 1).scale(3.0);
+//    }
+//
+//    private static Turtle kcn(Turtle turtle, int level) {
+//        if (level == 0) {
+//            return turtle.forward(1);
+//        }
+//
+//        Turtle nt = turtle.move(1.0)
+//                .rotate(5.0 * Math.PI / 6.0)
+//                .scale(1.0 / Math.sqrt(3.0));
+//
+//        nt = kcn(nt, level - 1).rotate(Math.PI / 3.0);
+//        return kcn(nt, level - 1)
+//                .rotate(5 * Math.PI / 6.0)
+//                .scale(Math.sqrt(3.0))
+//                .move(1.0);
+//    }
+
+    private static Item mandlebrot(Item zn, Item c) {
+        double x = zn.val(0);
+        double y = zn.val(1);
+
+        return vector2Dp((x * x) - (y * y), 2.0 * x * y).plus(c);
+    }
+
+    private static Item mandlebrotColor(Item c, int iterations) {
+        Item z = c;
+        for (int i = 0; i < iterations; i++) {
+            double x = z.val(0);
+            double y = z.val(1);
+
+            z = mandlebrot(z, c);
+
+            if ((x * x) + (y * y) > 4) {
+//                return item2D(
+//                        (iterations - (i + 1.0)) / iterations,
+//                        Math.pow((iterations - (i + 1.0)) / iterations, 2.0), 1.0)
+//                        .times(i(3).rotate2D(i * Math.PI / 12.0).shift2D(1.0, 1.0).scale2D(.5));
+                return item2D(0, 0, 0);
             }
         }
 
-        List<Matrix> row0s = new ArrayList<>();
-        row0s.add(sprite);
-        row0s.add(iterate(sprite, wTrans, 1));
-        row0s.add(iterate(sprite, wTrans, 2));
-        row0s.add(iterate(sprite, wTrans, 5));
-        row0s.add(iterate(sprite, wTrans, 10));
+        Item cv = c.minus(z);
+        double dot = cv.dot(cv);
 
-        row0 = combineSprites(row0s);
-
-        List<Matrix> row1s = new ArrayList<>();
-        row1s.add(sprite);
-        row1s.add(iterate(sprite, wwTrans, 1));
-        row1s.add(iterate(sprite, wwTrans, 2));
-        row1s.add(iterate(sprite, wwTrans, 5));
-        row1s.add(iterate(sprite, wwTrans, 10));
-
-        row1 = combineSprites(row1s);
-
-        t = kcn(Turtle.t(), 10);
+        return item2D(0.0, 1.0, 1.0).times(i(3).rotate2D(dot * Math.PI));
     }
-
-    private static Matrix iterate(Matrix s0, List<Matrix> ifs, int reps) {
-        Matrix s = s0;
-
-        for (int i = 0; i < reps; i++) {
-            Matrix next = s.times(ifs.get(0));
-            for (int j = 1; j < ifs.size(); j++) {
-                next = next.concat(s.times(ifs.get(j)));
-            }
-
-            s = next;
-        }
-
-        return s;
-    }
-
-    private static Matrix combineSprites(List<Matrix> sprites) {
-        double width = 1.0 / sprites.size();
-
-        Matrix S = i(3).scale2D(width - .1).shift2D(.05, 0);
-
-        Matrix combine = sprites.get(0).times(S);
-
-        for (int i = 1; i < sprites.size(); i++) {
-            S = S.shift2D(width, 0);
-
-            combine = combine.concat(sprites.get(i).times(S));
-        }
-
-        return combine;
-    }
-
-    private static Turtle kco(Turtle turtle, int level) {
-        if (level == 0) {
-            return turtle.forward(1);
-        }
-
-        Turtle nt = turtle.scale(1.0 / 3.0);
-        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
-        nt = kco(nt, level - 1).rotate(- 2 * Math.PI / 3.0);
-        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
-        return kco(nt, level - 1).scale(3.0);
-    }
-
-    private static Turtle kcn(Turtle turtle, int level) {
-        if (level == 0) {
-            return turtle.forward(1);
-        }
-
-        Turtle nt = turtle.move(1.0)
-                .rotate(5.0 * Math.PI / 6.0)
-                .scale(1.0 / Math.sqrt(3.0));
-
-        nt = kcn(nt, level - 1).rotate(Math.PI / 3.0);
-        return kcn(nt, level - 1)
-                .rotate(5 * Math.PI / 6.0)
-                .scale(Math.sqrt(3.0))
-                .move(1.0);
-    }
-
 
     private void render() {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
+
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        rasterize(this::op);
 
-        glLineWidth(2);
+        glfwSwapBuffers(window); // swap the color buffers
+    }
 
-        glColor3d(0.0, 0.0, 0.0);
-        glBegin(GL_LINES);
-        t.draw2D();
+    private void rasterize(UnaryOperator<Item> f) {
+        glPointSize(2.0f);
 
-//        double[][] colors = new double[][] {
-//          new double[] {1.0, 0.0, 0.0},
-//          new double[] {0.0, 0.0, 0.0},
-//          new double[] {0.0, 0.0, 1.0},
-//          new double[] {0.0, 0.5, 0.0}
-//        };
-//
-//        row0.scale2D(2.0).shift2D(-1.0, 0).draw2D();
-//        row1.scale2D(2.0).shift2D(-1.0, -.2).draw2D();
+        glPushMatrix();
+        glLoadIdentity();
 
-//        sprite.shift2D(-.5, 0).draw2D();
+        int[] widthArr = new int[1];
+        int[] heightArr = new int[1];
+        glfwGetWindowSize(window, widthArr, heightArr);
+
+        int width = widthArr[0];
+        int height = heightArr[0];
+
+        double widthScale = (width / 2.0) * stepSize;
+        double heightScale = (height / 2.0) * stepSize;
+
+        glScaled(1.0 / widthScale, 1.0 / heightScale, 1);
+        glTranslated(-x, -y, 0);
+
+        double cornerX = x - widthScale;
+        double cornerY = y - heightScale;
+
+        glBegin(GL_POINTS);
+
+        for (double xc = 0; xc < width; xc++) {
+            for (double yc = 0; yc < height; yc++) {
+                double xp = cornerX + (stepSize * xc);
+                double yp = cornerY + (stepSize * yc);
+
+                Item color = f.apply(vector2D(xp, yp));
+                glColor3d(color.val(0), color.val(1), color.val(2));
+                glVertex2d(xp, yp);
+            }
+        }
+
         glEnd();
+        glPopMatrix();
     }
 
 
