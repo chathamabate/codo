@@ -67,4 +67,8 @@ public class Turtle {
     public void draw2D() {
         mat.draw2D();
     }
+
+    public Matrix image() {
+        return mat;
+    }
 }

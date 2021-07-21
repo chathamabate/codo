@@ -284,6 +284,15 @@ public class Matrix {
         return this.times(new Matrix(mat));
     }
 
+    public Matrix scale2D(double sh, double sv) {
+        double[][] mat = identityArray(3);
+
+        mat[0][0] = sh;
+        mat[1][1] = sv;
+
+        return this.times(new Matrix(mat));
+    }
+
     public Matrix rotate2D(Item p, double theta) {
         if (!p.is2DPoint()) {
             throw new IllegalArgumentException("rotate2D requires 2D Point!");

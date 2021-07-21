@@ -141,7 +141,6 @@ public class Runner {
         GL.createCapabilities();
 
         glMatrixMode(GL_MODELVIEW);
-
         // Set the clear color
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -154,12 +153,12 @@ public class Runner {
 
             if (redraw) {
                 render();
-                redraw = false;
+                // redraw = false;
             }
 
             try {
                 // Best Case Scenario 20 FPS
-                Thread.sleep(50);
+                Thread.sleep(25);
             } catch (InterruptedException e) {
                 System.out.println("Interrupt Exception!");
             }
@@ -190,50 +189,58 @@ public class Runner {
         redraw = true;
     }
 
+    // Sprites should be contained in Quadrant I.
+    private static Matrix combineSprites(List<Matrix> sprites, int rows, int cols, double scale,
+                                         double iWidth, double iHeight, double hSpace, double vSpace) {
+        double cellWidth = (iWidth * scale) + (2 * hSpace);
+        double cellHeight = (iHeight * scale) + (2 * vSpace);
 
-//    private static Matrix combineSprites(List<Matrix> sprites) {
-//        double width = 1.0 / sprites.size();
-//
-//        Matrix S = i(3).scale2D(width - .1).shift2D(.05, 0);
-//
-//        Matrix combine = sprites.get(0).times(S);
-//
-//        for (int i = 1; i < sprites.size(); i++) {
-//            S = S.shift2D(width, 0);
-//
-//            combine = combine.concat(sprites.get(i).times(S));
-//        }
-//
-//        return combine;
-//    }
-//
-//    private static Turtle kco(Turtle turtle, int level) {
-//        if (level == 0) {
-//            return turtle.forward(1);
-//        }
-//
-//        Turtle nt = turtle.scale(1.0 / 3.0);
-//        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
-//        nt = kco(nt, level - 1).rotate(- 2 * Math.PI / 3.0);
-//        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
-//        return kco(nt, level - 1).scale(3.0);
-//    }
-//
-//    private static Turtle kcn(Turtle turtle, int level) {
-//        if (level == 0) {
-//            return turtle.forward(1);
-//        }
-//
-//        Turtle nt = turtle.move(1.0)
-//                .rotate(5.0 * Math.PI / 6.0)
-//                .scale(1.0 / Math.sqrt(3.0));
-//
-//        nt = kcn(nt, level - 1).rotate(Math.PI / 3.0);
-//        return kcn(nt, level - 1)
-//                .rotate(5 * Math.PI / 6.0)
-//                .scale(Math.sqrt(3.0))
-//                .move(1.0);
-//    }
+        Matrix image = null;
+
+        for (int i = 0; i < rows && i * cols < sprites.size(); i++) {
+            for (int j = 0; j < cols && (i * cols) + j < sprites.size(); j++) {
+                double newX = ((j + .5) * cellWidth);
+                double newY = (rows - i - .5) * cellHeight;
+
+                Matrix newSprite = sprites.get((i * cols) + j)
+                        .shift2D(-iWidth / 2.0, -iHeight / 2.0)
+                        .scale2D(scale)
+                        .shift2D(newX, newY);
+
+                image = image == null ? newSprite : image.concat(newSprite);
+            }
+        }
+
+        return image;
+    }
+
+    private static Turtle kco(Turtle turtle, int level) {
+        if (level == 0) {
+            return turtle.forward(1);
+        }
+
+        Turtle nt = turtle.scale(1.0 / 3.0);
+        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
+        nt = kco(nt, level - 1).rotate(- 2 * Math.PI / 3.0);
+        nt = kco(nt, level - 1).rotate(Math.PI / 3.0);
+        return kco(nt, level - 1).scale(3.0);
+    }
+
+    private static Turtle kcn(Turtle turtle, int level) {
+        if (level == 0) {
+            return turtle.forward(1);
+        }
+
+        Turtle nt = turtle.move(1.0)
+                .rotate(5.0 * Math.PI / 6.0)
+                .scale(1.0 / Math.sqrt(3.0));
+
+        nt = kcn(nt, level - 1).rotate(Math.PI / 3.0);
+        return kcn(nt, level - 1)
+                .rotate(5 * Math.PI / 6.0)
+                .scale(Math.sqrt(3.0))
+                .move(1.0);
+    }
 
     private static Item mandlebrot(Item zn, Item c) {
         double x = zn.val(0);
@@ -251,25 +258,77 @@ public class Runner {
             z = mandlebrot(z, c);
 
             if ((x * x) + (y * y) > 4) {
-//                return item2D(
-//                        (iterations - (i + 1.0)) / iterations,
-//                        Math.pow((iterations - (i + 1.0)) / iterations, 2.0), 1.0)
-//                        .times(i(3).rotate2D(i * Math.PI / 12.0).shift2D(1.0, 1.0).scale2D(.5));
-                return item2D(0, 0, 0);
+                return item2D(
+                        (iterations - (i + 1.0)) / iterations,
+                        Math.pow((iterations - (i + 1.0)) / iterations, 2.0), 1.0)
+                        .times(i(3).rotate2D(i * Math.PI / 12.0).shift2D(1.0, 1.0).scale2D(.5));
+               //  return item2D(0, 0, 0);
             }
         }
 
-        Item cv = c.minus(z);
-        double dot = cv.dot(cv);
-
-        return item2D(0.0, 1.0, 1.0).times(i(3).rotate2D(dot * Math.PI));
+        return item2D(0, 0, 0);
+//        Item cv = c.minus(z);
+//        double dot = cv.val(0) * cv.val(0) + cv.val(1) + cv.val(1);
+//
+//        return item2D(0.0, 1.0, 1.0).times(i(3).rotate2D(dot * Math.PI));
     }
 
+    private double theta = Math.PI / 2;
+    private int dir = 1;
+
     private void render() {
+
+        // Right now, render only happens once!
+
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
         glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-        rasterize(this::op);
+
+        Matrix image = quadPulse(theta).iterate(6, sprite2D(0, 0, 1, 0));
+
+        glColor3d(0, 0, 0);
+        glBegin(GL_LINES);
+        image.draw2D();
+        glEnd();
+
+        theta += (dir * .01);
+
+        if ((dir == 1 && theta >= Math.PI / 2) || (dir == -1 && theta <= Math.PI / 3)) {
+            dir *= -1;
+        }
+
+        // Curve Comparison Code.
+//        final double theta = Math.PI / 12;
+//        final int iterations = 11;
+//        final Matrix start = Matrix.sprite2D(0, 0, 1, 0);
+//
+//        final double[][] colors = new double[][]{
+//                new double[] {1.0, 0.0, 0.0},
+//                new double[] {0.0, .5, 0.0},
+//                new double[] {0.0, 0.0, 1.0},
+//                new double[] {1.0, 0.5, 0.0}
+//        };
+//
+//        IFS normal = trianglePulse(theta);
+//        IFS reduced = trianglePulseReduced(theta);
+//
+//        List<Matrix> normalResults = normal.ofList(normal.iterate((iterations - 1) / 2, start));
+//        List<Matrix> reducedResults = reduced.ofList(reduced.iterate(iterations, start));
+//
+//        glColor3d(0, 0, 0);
+//        glBegin(GL_LINES);
+//
+//        for (int i = 0; i < reducedResults.size(); i++) {
+//            glColor3dv(colors[i]);
+//            reducedResults.get(i).shift2D(-.5, -.3).draw2D();
+//        }
+//
+//        for (int i = 0; i < normalResults.size(); i++) {
+//            glColor3dv(colors[i]);
+//            normalResults.get(i).shift2D(-.5, .3).draw2D();
+//        }
+//
+//        glEnd();
 
         glfwSwapBuffers(window); // swap the color buffers
     }
